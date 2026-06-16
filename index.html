@@ -166,9 +166,7 @@ canvas {
 /* ── SONIDO FUEGOS ARTIFICIALES GLOBAL ── */
 function playFwBoom(){
   try{
-    if(!window._fwAC) window._fwAC=new(window.AudioContext||window.webkitAudioContext)();
-    const ac=window._fwAC;
-    if(ac.state==='suspended') ac.resume();
+    const ac=getAudioCtx();
     const t=ac.currentTime;
     // BOOM bajo
     const bl=Math.floor(ac.sampleRate*.12);
@@ -199,6 +197,34 @@ function playFwBoom(){
     ts2.connect(tbp); tbp.connect(tg); tg.connect(ac.destination); ts2.start(t+.04); ts2.stop(t+.55);
   } catch(e){}
 }
+
+
+/* ── AUDIO CONTEXT GLOBAL iOS-SAFE ── */
+window._GAC = null;
+function getAudioCtx(){
+  if(!window._GAC){
+    window._GAC = new(window.AudioContext||window.webkitAudioContext)();
+  }
+  if(window._GAC.state === 'suspended') window._GAC.resume();
+  return window._GAC;
+}
+// Desbloquear en primer gesto — crítico para iOS
+(function(){
+  function unlockAudio(){
+    var ac = getAudioCtx();
+    // Buffer silencioso para desbloquear iOS
+    var buf = ac.createBuffer(1,1,ac.sampleRate);
+    var src = ac.createBufferSource();
+    src.buffer = buf; src.connect(ac.destination);
+    src.start(0); src.stop(0.001);
+    document.removeEventListener('touchend', unlockAudio);
+    document.removeEventListener('touchstart', unlockAudio);
+    document.removeEventListener('click', unlockAudio);
+  }
+  document.addEventListener('touchend', unlockAudio, {passive:true});
+  document.addEventListener('touchstart', unlockAudio, {passive:true});
+  document.addEventListener('click', unlockAudio);
+})();
 
 /* ── DATOS ── */
 const PHOTOS={
@@ -456,7 +482,7 @@ document.addEventListener('touchmove',function(e){if(e.touches&&e.touches[0]){cm
 document.addEventListener('touchstart',function(e){if(e.touches&&e.touches[0]){cmx=e.touches[0].clientX;cmy=e.touches[0].clientY;cClk=true;setTimeout(function(){cClk=false;},180);}},{passive:true});
 document.addEventListener('touchend',function(){setTimeout(function(){cmx=-300;cmy=-300;},1200);},{passive:true});
 document.addEventListener('mousedown',()=>{cpi=(cpi+1)%CPALS.length;cClk=true;const pal=CPALS[cpi];for(let i=0;i<12;i++){const a=(i/12)*Math.PI*2,s=1.5+Math.random()*3;cPts.push({x:csx,y:csy,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:25+Math.random()*14,maxLife:0,c:[pal.w1,pal.w2,pal.s1,pal.wb,'#fff8d0'][Math.floor(Math.random()*5)],sz:1.2+Math.random()*2.5,rot:Math.random()*Math.PI*2,rotV:(Math.random()-.5)*.38});cPts[cPts.length-1].maxLife=cPts[cPts.length-1].life;}setTimeout(()=>cClk=false,300);});
-function cursorLoop(ts){CVSX.clearRect(0,0,CVSC.width,CVSC.height);csx+=(cmx-csx)*.16;csy+=(cmy-csy)*.16;const ddx=csx-cLx,ddy=csy-cLy;cSpd=Math.sqrt(ddx*ddx+ddy*ddy);cLx=csx;cLy=csy;cfP+=cClk?.22:Math.max(.04,Math.min(.12,.038+cSpd*.009));const tilt=Math.atan2(ddy,ddx)*.16;cPts=cPts.filter(p=>{p.life--;p.x+=p.vx;p.y+=p.vy;p.vy+=.1;p.vx*=.97;p.rot+=p.rotV;const al=p.life/p.maxLife;CVSX.save();CVSX.globalAlpha=al;CVSX.translate(p.x,p.y);CVSX.rotate(p.rot);CVSX.beginPath();CVSX.ellipse(0,0,p.sz,p.sz*.55,0,0,Math.PI*2);CVSX.fillStyle=p.c;CVSX.fill();CVSX.restore();return p.life>0;});CVSX.save();CVSX.translate(csx,csy);CVSX.rotate(tilt);CVSX.translate(-csx,-csy);drawCursorButterfly(csx,csy,9,cpi,cfP,cClk);CVSX.restore();requestAnimationFrame(cursorLoop);}
+function cursorLoop(ts){CVSX.clearRect(0,0,CVSC.width,CVSC.height);if(cmx>-100){csx+=(cmx-csx)*.16;csy+=(cmy-csy)*.16;}const ddx=csx-cLx,ddy=csy-cLy;cSpd=Math.sqrt(ddx*ddx+ddy*ddy);cLx=csx;cLy=csy;cfP+=cClk?.22:Math.max(.04,Math.min(.12,.038+cSpd*.009));const tilt=Math.atan2(ddy,ddx)*.16;cPts=cPts.filter(p=>{p.life--;p.x+=p.vx;p.y+=p.vy;p.vy+=.1;p.vx*=.97;p.rot+=p.rotV;const al=p.life/p.maxLife;CVSX.save();CVSX.globalAlpha=al;CVSX.translate(p.x,p.y);CVSX.rotate(p.rot);CVSX.beginPath();CVSX.ellipse(0,0,p.sz,p.sz*.55,0,0,Math.PI*2);CVSX.fillStyle=p.c;CVSX.fill();CVSX.restore();return p.life>0;});CVSX.save();CVSX.translate(csx,csy);CVSX.rotate(tilt);CVSX.translate(-csx,-csy);drawCursorButterfly(csx,csy,9,cpi,cfP,cClk);CVSX.restore();requestAnimationFrame(cursorLoop);}
 requestAnimationFrame(cursorLoop);
 
 /* ── COMING SOON OVERLAY ── */
@@ -948,9 +974,7 @@ function startSec4Butterflies(){
 /* ── SONIDO BRILLITOS EN BOTONES ── */
 function playSparkle(){
   try{
-    if(!window._spAC) window._spAC=new(window.AudioContext||window.webkitAudioContext)();
-    const ac=window._spAC;
-    if(ac.state==='suspended') ac.resume();
+    const ac=getAudioCtx();
     const notes=[1046.5,1318.5,1567.98,2093,2637,3136,4186];
     const n=3+Math.floor(Math.random()*3);
     for(let i=0;i<n;i++){
@@ -1010,63 +1034,118 @@ function _showDecoCanvas(){
 /* ── GLOBOS "26" — UNA SOLA VEZ AL ENTRAR A SEC4 ── */
 function showBalloon26(){
   const cv=document.createElement('canvas');
-  cv.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:300;';
+  cv.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:10000;';
   cv.width=window.innerWidth; cv.height=window.innerHeight;
   document.body.appendChild(cv);
   const ctx=cv.getContext('2d');
   const W=cv.width, H=cv.height;
-  const r=Math.min(W,H)*0.11; // radio del globo
-  const gap=r*0.15; // espacio entre globos
-  const totalW=r*2*0.82*2+gap; // ancho total del par
-  const cx2=W/2-r*0.82-gap/2; // centro del "2" — izquierda del par
-  const cx6=W/2+r*0.82+gap/2; // centro del "6" — derecha del par
-  let y=H+r*2.2, vy=-2.5, sway=0, alpha=0, frame=0;
 
-  function drawBalloon(x, col, shine, num){
+  const ROW_PALS=[
+    ['#c0003a','#ff6688','#e8003a','#ff2255'],
+    ['#f48fb1','#fce4ec','#e8336f','#ffb3cc'],
+    ['#c0003a','#f48fb1','#ff6688','#e8003a','#fce4ec','#ff2255','#ffb3cc'],
+  ];
+  const rows=[
+    {chars:['H','B'],                    pal:ROW_PALS[0]},
+    {chars:['C','R','I','S','!','\u{1F382}'], pal:ROW_PALS[2]},
+    {chars:['2','6'],                    pal:ROW_PALS[1]},
+  ];
+
+  const maxChars=6;
+  const r=Math.min(W/(maxChars*2.1), H*0.055);
+  const gap=r*0.12;
+  const rowH=r*2.3;
+
+  const blockH=rows.length*rowH;
+  let baseY=H+blockH*0.5;
+  const vy=-1.8;
+  let globalSway=0;
+  let alpha=0;
+  let frame=0;
+
+  // Pre-calcular fase individual de cada globo — diferente por posición, amplitud pequeña
+  const phases=[];
+  rows.forEach(function(row,ri){
+    const rowPhases=[];
+    row.chars.forEach(function(ch,ci){
+      rowPhases.push({
+        phase: (ri*2.3 + ci*1.1),     // fase inicial única
+        spd:   0.028 + ci*0.004 + ri*0.003, // velocidad levemente distinta
+        amp:   3.5 + (ci%2)*1.5        // amplitud máx ±5px — nunca se solapan
+      });
+    });
+    phases.push(rowPhases);
+  });
+
+  function getShine(col){
+    var m={'#c0003a':'#ff6688','#e8003a':'#ff8899','#ff2255':'#ffaabb',
+           '#f48fb1':'#fff0f4','#fce4ec':'#fff8fa','#e8336f':'#ff99bb','#ffb3cc':'#ffd8e8'};
+    return m[col]||'#ffd0dd';
+  }
+
+  function drawBalloon(x,y,col,shine,ch){
     ctx.save();
-    ctx.globalAlpha=Math.min(alpha,0.93);
-    ctx.shadowColor='rgba(0,0,0,0.2)'; ctx.shadowBlur=12;
-    const g=ctx.createRadialGradient(x-r*0.28,y-r*0.32,r*0.04,x,y,r);
+    ctx.globalAlpha=Math.min(alpha,0.96);
+    // Sombra para destacar del fondo
+    ctx.shadowColor='rgba(0,0,0,0.5)'; ctx.shadowBlur=12; ctx.shadowOffsetX=2; ctx.shadowOffsetY=3;
+    // Cuerpo
+    const g=ctx.createRadialGradient(x-r*0.26,y-r*0.3,r*0.04,x,y,r);
     g.addColorStop(0,shine); g.addColorStop(1,col);
     ctx.beginPath(); ctx.ellipse(x,y,r*0.82,r,0,0,Math.PI*2);
     ctx.fillStyle=g; ctx.fill();
-    ctx.shadowBlur=0;
+    ctx.shadowBlur=0; ctx.shadowOffsetX=0; ctx.shadowOffsetY=0;
     // Brillo
-    ctx.beginPath(); ctx.ellipse(x-r*0.28,y-r*0.35,r*0.17,r*0.11,-0.4,0,Math.PI*2);
-    ctx.fillStyle='rgba(255,255,255,0.46)'; ctx.fill();
+    ctx.beginPath(); ctx.ellipse(x-r*0.27,y-r*0.34,r*0.18,r*0.12,-0.4,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,255,255,0.55)'; ctx.fill();
     // Nudo
-    ctx.beginPath(); ctx.moveTo(x-3,y+r); ctx.lineTo(x,y+r+6); ctx.lineTo(x+3,y+r);
+    ctx.beginPath(); ctx.moveTo(x-3,y+r); ctx.lineTo(x,y+r+5); ctx.lineTo(x+3,y+r);
     ctx.fillStyle=col; ctx.fill();
     // Hilo
-    ctx.strokeStyle='rgba(130,130,130,0.4)'; ctx.lineWidth=1.1;
-    ctx.beginPath(); ctx.moveTo(x,y+r+6); ctx.quadraticCurveTo(x+7,y+r+38,x+3,y+r+72); ctx.stroke();
-    // Número
-    ctx.fillStyle=col==='#c0003a'?'#fff':'#c0003a';
-    ctx.font="bold "+Math.round(r*1.05)+"px 'Fredoka One',sans-serif";
+    ctx.strokeStyle='rgba(80,80,80,0.55)'; ctx.lineWidth=1.2;
+    ctx.beginPath(); ctx.moveTo(x,y+r+5); ctx.quadraticCurveTo(x+6,y+r+28,x+3,y+r+55); ctx.stroke();
+    // Letra
+    ctx.shadowColor='rgba(0,0,0,0.35)'; ctx.shadowBlur=3;
+    ctx.fillStyle=(col==='#fce4ec'||col==='#ffb3cc')?'#c0003a':'#fff';
+    ctx.font='bold '+Math.round(r*1.05)+"px 'Fredoka One',sans-serif";
     ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText(num,x,y+r*0.02);
+    ctx.globalAlpha=Math.min(alpha,0.96);
+    ctx.fillText(ch,x,y+r*0.03);
     ctx.restore();
   }
 
   function loop(){
     ctx.clearRect(0,0,W,H);
     frame++;
-    // Fade in
-    alpha=Math.min(1,frame/20);
-    // Subir
-    y+=vy;
-    // Sway horizontal leve — ambos en fase, se mueven juntos
-    sway+=0.02;
-    const swayX=Math.sin(sway)*6;
-    // Fade out al salir por arriba
-    if(y<-r*2) alpha=Math.max(0,alpha-0.035);
-    drawBalloon(cx2+swayX,'#c0003a','#ff8899','2');
-    drawBalloon(cx6+swayX,'#f48fb1','#fce4ec','6');
-    if(frame>40 && alpha<=0){ document.body.removeChild(cv); return; }
+    alpha=Math.min(1,frame/22);
+    baseY+=vy;
+    globalSway+=0.019;
+    if(baseY < -(blockH+r*2)) alpha=Math.max(0,alpha-0.03);
+
+    rows.forEach(function(row,ri){
+      const rowY=baseY+ri*rowH;
+      const n=row.chars.length;
+      const totalW=n*(r*2*0.82)+(n-1)*gap;
+      const startX=W/2-totalW/2+r*0.82;
+      row.chars.forEach(function(ch,ci){
+        const ph=phases[ri][ci];
+        ph.phase+=ph.spd;
+        // Movimiento: oscilación vertical pequeña + leve horizontal
+        // El Y individual varía pero mantiene la posición base de la fila
+        const offY=Math.sin(ph.phase)*ph.amp;
+        const offX=Math.cos(ph.phase*0.7)*2.5; // ±2.5px horizontal — nunca se mezclan
+        const cx=startX+ci*(r*2*0.82+gap)+offX;
+        const cy=rowY+offY;
+        const col=row.pal[ci%row.pal.length];
+        drawBalloon(cx,cy,col,getShine(col),ch);
+      });
+    });
+
+    if(frame>50 && alpha<=0){ document.body.removeChild(cv); return; }
     requestAnimationFrame(loop);
   }
   requestAnimationFrame(loop);
 }
+
 
 
 /* ── MÚSICA DE CUMPLEAÑOS — SUAVE, TODAS LAS PESTAÑAS ── */
@@ -1077,8 +1156,7 @@ function showBalloon26(){
     if(_bStarted) return;
     _bStarted = true;
     try{
-      _bAC = new(window.AudioContext || window.webkitAudioContext)();
-      if(_bAC.state === 'suspended') _bAC.resume();
+      _bAC = getAudioCtx();
 
       // Ganancia master — muy baja
       _bGain = _bAC.createGain();
